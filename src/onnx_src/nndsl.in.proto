@@ -1,0 +1,303 @@
+syntax = "proto2";
+
+package {PACKAGE_NAME};
+
+message AttributeProto {
+  enum AttributeType {
+    UNDEFINED = 0;
+    FLOAT = 1;
+    INT = 2;
+    STRING = 3;
+    TENSOR = 4;
+    GRAPH = 5;
+    SPARSE_TENSOR = 11;
+    TYPE_PROTO = 13;
+
+    FLOATS = 6;
+    INTS = 7;
+    STRINGS = 8;
+    TENSORS = 9;
+    GRAPHS = 10;
+    SPARSE_TENSORS = 12;
+    TYPE_PROTOS = 14;
+  }
+
+  optional string name = 1;           // namespace Attribute
+  optional string ref_attr_name = 21;
+  optional string doc_string = 13;
+  optional AttributeType type = 20;   // discriminator that indicates which field below is in use
+
+  optional float f = 2;               // float
+  optional int64 i = 3;               // int
+  optional bytes s = 4;               // UTF-8 string
+  optional TensorProto t = 5;         // tensor value
+  optional GraphProto g = 6;          // graph
+  optional SparseTensorProto sparse_tensor = 22;  // sparse tensor value
+
+  optional TypeProto tp = 14;          // type proto
+
+  repeated float floats = 7;          // list of floats
+  repeated int64 ints = 8;            // list of ints
+  repeated bytes strings = 9;         // list of UTF-8 strings
+  repeated TensorProto tensors = 10;  // list of tensors
+  repeated GraphProto graphs = 11;    // list of graph
+  repeated SparseTensorProto sparse_tensors = 23; // list of sparse tensors
+  repeated TypeProto type_protos = 15;// list of type protos
+}
+
+message ValueInfoProto {
+  optional string name = 1;     // namespace Value
+  optional TypeProto type = 2;
+  optional string doc_string = 3;
+}
+
+message NodeProto {
+  repeated string input = 1;    // namespace Value
+  repeated string output = 2;   // namespace Value
+
+  optional string name = 3;     // namespace Node
+
+  optional string op_type = 4;  // namespace Operator
+  optional string domain = 7;   // namespace Domain
+
+  repeated AttributeProto attribute = 5;
+
+  optional string doc_string = 6;
+}
+
+message TrainingInfoProto {
+  optional GraphProto initialization = 1;
+
+  optional GraphProto algorithm = 2;
+
+  repeated StringStringEntryProto initialization_binding = 3;
+
+  repeated StringStringEntryProto update_binding = 4;
+}
+
+message ModelProto {
+  optional int64 ir_version = 1;
+
+  repeated OperatorSetIdProto opset_import = 8;
+
+  optional string producer_name = 2;
+
+  optional string producer_version = 3;
+
+  optional string domain = 4;
+
+  optional int64 model_version = 5;
+
+  optional string doc_string = 6;
+
+  optional GraphProto graph = 7;
+
+  repeated StringStringEntryProto metadata_props = 14;
+
+  repeated TrainingInfoProto training_info = 20;
+
+  repeated FunctionProto functions = 25;
+};
+
+message StringStringEntryProto {
+  optional string key = 1;
+  optional string value= 2;
+};
+
+message TensorAnnotation {
+  optional string tensor_name = 1;
+  repeated StringStringEntryProto quant_parameter_tensor_names = 2;
+}
+
+
+
+message GraphProto {
+  repeated NodeProto node = 1;
+
+  optional string name = 2;   // namespace Graph
+
+  repeated TensorProto initializer = 5;
+
+  repeated SparseTensorProto sparse_initializer = 15;
+
+  optional string doc_string = 10;
+
+  repeated ValueInfoProto input = 11;
+  repeated ValueInfoProto output = 12;
+
+  repeated ValueInfoProto value_info = 13;
+
+  repeated TensorAnnotation quantization_annotation = 14;
+}
+
+message TensorProto {
+  enum DataType {
+    UNDEFINED = 0;
+
+    FLOAT = 1;   // float
+    UINT8 = 2;   // uint8_t
+    INT8 = 3;    // int8_t
+    UINT16 = 4;  // uint16_t
+    INT16 = 5;   // int16_t
+    INT32 = 6;   // int32_t
+    INT64 = 7;   // int64_t
+    STRING = 8;  // string
+    BOOL = 9;    // bool
+
+    FLOAT16 = 10;
+
+    DOUBLE = 11;
+    UINT32 = 12;
+    UINT64 = 13;
+    COMPLEX64 = 14;     // complex with float32 real and imaginary components
+    COMPLEX128 = 15;    // complex with float64 real and imaginary components
+
+    BFLOAT16 = 16;
+  }
+
+  repeated int64 dims = 1;
+
+  optional int32 data_type = 2;
+
+  message Segment {
+    optional int64 begin = 1;
+    optional int64 end = 2;
+  }
+  optional Segment segment = 3;
+
+  repeated float float_data = 4 [packed = true];
+
+  repeated int32 int32_data = 5 [packed = true];
+
+  repeated bytes string_data = 6;
+
+  repeated int64 int64_data = 7 [packed = true];
+
+  optional string name = 8; // namespace Value
+
+  optional string doc_string = 12;
+
+  optional bytes raw_data = 9;
+
+  repeated StringStringEntryProto external_data = 13;
+
+  enum DataLocation {
+    DEFAULT = 0;
+    EXTERNAL = 1;
+  }
+
+  optional DataLocation data_location = 14;
+
+  repeated double double_data = 10 [packed = true];
+
+  repeated uint64 uint64_data = 11 [packed = true];
+}
+
+message SparseTensorProto {
+  optional TensorProto values = 1;
+
+  optional TensorProto indices = 2;
+
+  repeated int64 dims = 3;
+}
+
+message TensorShapeProto {
+  message Dimension {
+    oneof value {
+      int64 dim_value = 1;
+      string dim_param = 2;   // namespace Shape
+    };
+    optional string denotation = 3;
+  };
+  repeated Dimension dim = 1;
+}
+
+message TypeProto {
+
+  message Tensor {
+    optional int32 elem_type = 1;
+    optional TensorShapeProto shape = 2;
+  }
+
+  message Sequence {
+    optional TypeProto elem_type = 1;
+  };
+
+  message Map {
+    optional int32 key_type = 1;
+    optional TypeProto value_type = 2;
+  };
+
+  message Optional {
+    optional TypeProto elem_type = 1;
+  };
+
+
+  message SparseTensor {
+    optional int32 elem_type = 1;
+    optional TensorShapeProto shape = 2;
+  }
+
+// #if ONNX-ML
+
+  message Opaque {
+    optional string domain = 1;
+    optional string name = 2;
+  }
+
+// #endif
+
+  oneof value {
+    Tensor tensor_type = 1;
+
+    Sequence sequence_type = 4;
+
+    Map map_type = 5;
+
+    Optional optional_type = 9;
+
+    SparseTensor sparse_tensor_type = 8;
+
+// #if ONNX-ML
+
+    Opaque opaque_type = 7;
+
+// #endif
+  }
+
+  optional string denotation = 6;
+}
+
+message OperatorSetIdProto {
+  optional string domain = 1;
+
+  optional int64 version = 2;
+}
+
+enum OperatorStatus {
+    EXPERIMENTAL = 0;
+    STABLE = 1;
+}
+
+message FunctionProto {
+  optional string name = 1;
+
+  reserved 2;
+  reserved "since_version";
+
+  reserved 3;
+  reserved "status";
+
+  repeated string input = 4;
+  repeated string output = 5;
+
+  repeated string attribute = 6;
+
+  repeated NodeProto node = 7;
+  optional string doc_string = 8;
+
+  repeated OperatorSetIdProto opset_import = 9;
+
+  optional string domain = 10;
+}
+
