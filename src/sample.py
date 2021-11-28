@@ -32,7 +32,6 @@ def sample_iris():
     print("Net(): ")
     print(n.eval(DATA))
 
-
 def main():
     sample_xyz()
     sample_iris()
