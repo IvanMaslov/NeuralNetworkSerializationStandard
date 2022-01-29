@@ -2,6 +2,8 @@ import abc
 import sys
 
 
+
+
 class Container():
 
     __NEXT_ID = 0
@@ -67,6 +69,7 @@ class Node:
         print("Node from {} to {}".format(self.args, self.res.getId()))
 
 
+# Format AutoML Iteratable Neural Network 
 class NeuralNetwork():
 
     def __init__(self):
