@@ -8,6 +8,41 @@ import torch.onnx
 import onnx
 import onnxruntime
 
+
+def getLayers(model):
+    """
+    get each layer's name and its module
+    :param model:
+    :return: each layer's name and its module
+    """
+    layers = []
+ 
+    def unfoldLayer(model):
+        """
+        unfold each layer
+        :param model: the given model or a single layer
+        :param root: root name
+        :return:
+        """
+ 
+        # get all layers of the model
+        layer_list = list(model.named_children())
+        for item in layer_list:
+            module = item[1]
+            sublayer = list(module.named_children())
+            sublayer_num = len(sublayer)
+ 
+            # if current layer contains sublayers, add current layer name on its sublayers
+            if sublayer_num == 0:
+                layers.append(module)
+            # if current layer contains sublayers, unfold them
+            elif isinstance(module, torch.nn.Module):
+                unfoldLayer(module)
+ 
+    unfoldLayer(model)
+    return layers
+
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -35,8 +70,104 @@ class Net(nn.Module):
         x = self.fc_layers(x)
         return x
 
+class LeNet2(nn.Module):
+
+    def __init__(self):
+        super(LeNet2, self).__init__()
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.after1 = nn.Sequential(nn.ReLU(), nn.MaxPool2d((2, 2)))
+        self.after2 = nn.Sequential(nn.ReLU(), nn.MaxPool2d(2))
+        self.conv1 = nn.Conv2d(1, 6, 5)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        # an affine operation: y = Wx + b
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)  # 5*5 from image dimension
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        # Max pooling over a (2, 2) window
+        x = self.after1(self.conv1(x))
+        # If the size is a square, you can specify with a single number
+        x = self.after2(self.conv2(x))
+        x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = nnF.relu(self.fc1(x))
+        x = nnF.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+    
+class LeNet(nn.Module):
+
+    def __init__(self):
+        super(LeNet, self).__init__()
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.conv1 = nn.Conv2d(1, 6, 5)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        # an affine operation: y = Wx + b
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)  # 5*5 from image dimension
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        # Max pooling over a (2, 2) window
+        x = nnF.max_pool2d(nnF.relu(self.conv1(x)), (2, 2))
+        # If the size is a square, you can specify with a single number
+        x = nnF.max_pool2d(nnF.relu(self.conv2(x)), 2)
+        x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = nnF.relu(self.fc1(x))
+        x = nnF.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+
 def sampleData():
     return torch.rand((1, 1, 28, 28))
+
+
+def cloneExample():
+    print("Clone example: ")
+    n = LeNet2()
+    arg =  torch.rand((1, 1, 32, 32))
+    resOrig = n(arg)
+    print("Original: ", resOrig)
+    t = arg
+    l = getLayers(n)
+    print("Layers", l)
+    #for i in l:
+    #    print("Go througt", i)
+    #    t = i(t)
+    #print("Layer on", t)
+
+"""
+* Создание FAMLINN по pyTorch nn.Model
+   . Получение архитектуры с учетом операции над тензорами и выходом слоев
+   . Установление порядка слоев
+   . Получение весов (на самом деле важные веса есть)
+* Создание FAMLINN по hiddenLayers
+   . Реализация "расклейки" и "антирепликации" слоев
+   . Нахождение стока и истока сети
+   . Получение весов и их назначение
+   . Получение функций по названию
+Устройство pyTorch:
+   . _modules содержит все веса??
+"""
+def hlExample():
+    import hiddenlayer as hl
+    print("HL example: ")
+    n = Net()
+    arg =  torch.rand((1, 1, 28, 28))
+    params = list(n.parameters())
+    resOrig = n(arg)
+    print("Original: ", resOrig)
+    h = hl.build_graph(n, arg)
+    # h.theme = hl.graph.THEMES["blue"].copy()
+    # h.save('LetNet', format='png')
+    print("Layer on", h)
+    for i in h.edges: print("  edge", i)
+    for i in h.nodes: print("  node", i)
+
+
 
 def convertExample():
     print("Convert example: ")
@@ -76,5 +207,23 @@ def convertExample():
     # https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html
     
 
+def fromNetExample(useLeNet=True):
+    print("fromNet example: ")
+    n = Net()
+    arg =  torch.rand((1, 1, 28, 28))
+    if useLeNet:
+        n = LeNet()
+        arg =  torch.rand((1, 1, 32, 32))
+    resOrig = n(arg)
+    print("Original: ", resOrig)
+    famlinn = FAMLINN()
+    famlinn.from_net(n, arg)
+    resFamlinn = famlinn.eval(arg)
+    print("Famlinn: ", resFamlinn)
+
+
+
 if __name__ == '__main__':
-    convertExample()
+    cloneExample()
+    hlExample()
+    fromNetExample()

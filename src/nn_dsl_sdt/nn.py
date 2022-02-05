@@ -1,7 +1,9 @@
 import abc
 import sys
 
-
+import torch.nn as nn
+import hiddenlayer as hl
+from typing import Any
 
 
 class Container():
@@ -91,6 +93,10 @@ class NeuralNetwork():
         res.write(data)
         return res.getId()
 
+    def from_net(self, net: nn.Module, arg: Any):        
+        h = hl.build_graph(net, arg)
+        return
+
     def eval(self, data):
         self.storage.get_container(self.storage.inputId()).write(data)
         for i in self.nodes: i.eval()
@@ -100,3 +106,7 @@ class NeuralNetwork():
         print("Print Neural Network:")
         self.storage.pprint()
         for i in self.nodes: i.pprint()
+
+
+class FAMLINN(NeuralNetwork):
+    pass
